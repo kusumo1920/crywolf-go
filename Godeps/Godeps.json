@@ -1,0 +1,31 @@
+{
+	"ImportPath": "github.com/honeybadger-io/crywolf",
+	"GoVersion": "go1.4.2",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/go-uuid/uuid",
+			"Comment": "null-15",
+			"Rev": "35bc42037350f0078e3c974c6ea690f1926603ab"
+		},
+		{
+			"ImportPath": "github.com/honeybadger-io/honeybadger-go",
+			"Comment": "v0.0.1-6-g6c02cdd",
+			"Rev": "6c02cdd14922fedd4d8eea49fb620763f0c63e57"
+		},
+		{
+			"ImportPath": "github.com/shirou/gopsutil/common",
+			"Comment": "1.0.0-70-gc71f9ee",
+			"Rev": "c71f9ee5be4592abdb847630035725d9e9506477"
+		},
+		{
+			"ImportPath": "github.com/shirou/gopsutil/load",
+			"Comment": "1.0.0-70-gc71f9ee",
+			"Rev": "c71f9ee5be4592abdb847630035725d9e9506477"
+		},
+		{
+			"ImportPath": "github.com/shirou/gopsutil/mem",
+			"Comment": "1.0.0-70-gc71f9ee",
+			"Rev": "c71f9ee5be4592abdb847630035725d9e9506477"
+		}
+	]
+}
