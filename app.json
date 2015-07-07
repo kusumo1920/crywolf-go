@@ -1,0 +1,16 @@
+{
+  "name": "Honeybadger example for Go",
+  "description": "A sample Go (golang) web application which reports panics to Honeybadger.",
+  "repository": "https://github.com/honeybadger-io/crywolf-go",
+  "logo": "https://www.honeybadger.io/images/logo.jpg",
+  "keywords": ["go", "golang", "panics", "errors", "honeybadger"],
+  "addons": [ "honeybadger" ],
+  "buildpacks": [
+    {
+      "url": "https://github.com/kr/heroku-buildpack-go.git"
+    }
+  ],
+  "env": {
+    "HONEYBADGER_ENV": "production"
+  }
+}
