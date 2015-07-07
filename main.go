@@ -21,8 +21,8 @@ func main() {
 	honeybadger.Configure(honeybadger.Configuration{APIKey: APIKey})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte("Looking to /fail?\n"))
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte("Looking to <a href=\"/fail\">/fail</a>?\n"))
 	})
 
 	http.HandleFunc("/fail", func(w http.ResponseWriter, r *http.Request) {
