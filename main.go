@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
+	"runtime"
 	"time"
 
 	"github.com/honeybadger-io/honeybadger-go"
@@ -18,7 +20,7 @@ func main() {
 		fmt.Println("Error: API key is required.")
 		return
 	}
-	honeybadger.Configure(honeybadger.Configuration{APIKey: APIKey})
+	honeybadger.Configure(honeybadger.Configuration{APIKey: APIKey, Root: getRoot()})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -40,6 +42,11 @@ func getPort() (port string) {
 		return DefaultPort
 	}
 	return
+}
+
+func getRoot() string {
+	_, root, _, _ := runtime.Caller(1)
+	return path.Dir(root)
 }
 
 func errorHandler(handler http.Handler) http.Handler {
