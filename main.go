@@ -28,6 +28,7 @@ func main() {
 	})
 
 	http.HandleFunc("/fail", func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
 		honeybadger.SetContext(honeybadger.Context{"userID": "1"})
 		if requestID := r.Header.Get("X-Request-ID"); requestID != "" {
 			honeybadger.SetContext(honeybadger.Context{"herokuRequestID": requestID})
