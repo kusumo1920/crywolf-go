@@ -9,7 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"code.google.com/p/go-uuid/uuid"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/mock"
 )
 
 var (
@@ -18,6 +19,14 @@ var (
 	requests      []*HTTPRequest
 	defaultConfig = *Config
 )
+
+type MockedHandler struct {
+	mock.Mock
+}
+
+func (h *MockedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.Called()
+}
 
 type HTTPRequest struct {
 	Request *http.Request
@@ -51,11 +60,11 @@ func setup(t *testing.T) {
 		},
 	)
 
-	*client.Config = *newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
+	*DefaultClient.Config = *newConfig(Configuration{APIKey: "badgers", Endpoint: ts.URL})
 }
 
 func teardown() {
-	*client.Config = defaultConfig
+	*DefaultClient.Config = defaultConfig
 }
 
 func TestDefaultConfig(t *testing.T) {
@@ -110,6 +119,103 @@ func TestNotifyWithContext(t *testing.T) {
 	assertContext(t, payload, context)
 }
 
+func TestNotifyWithErrorClass(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	Notify("Cobras!", ErrorClass{"Badgers"})
+	Flush()
+
+	if !testRequestCount(t, 1) {
+		return
+	}
+
+	payload := requests[0].decodeJSON()
+	error_payload, _ := payload["error"].(map[string]interface{})
+	sent_klass, _ := error_payload["class"].(string)
+
+	if !testNoticePayload(t, payload) {
+		return
+	}
+
+	if sent_klass != "Badgers" {
+		t.Errorf("Custom error class should override default. expected=%v actual=%#v.", "Badgers", sent_klass)
+		return
+	}
+}
+
+func TestNotifyWithFingerprint(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	Notify("Cobras!", Fingerprint{"Badgers"})
+	Flush()
+
+	if !testRequestCount(t, 1) {
+		return
+	}
+
+	payload := requests[0].decodeJSON()
+	error_payload, _ := payload["error"].(map[string]interface{})
+	sent_fingerprint, _ := error_payload["fingerprint"].(string)
+
+	if !testNoticePayload(t, payload) {
+		return
+	}
+
+	if sent_fingerprint != "Badgers" {
+		t.Errorf("Custom fingerprint should override default. expected=%v actual=%#v.", "Badgers", sent_fingerprint)
+		return
+	}
+}
+
+func TestNotifyWithHandler(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	BeforeNotify(func(n *Notice) error {
+		n.Fingerprint = "foo bar baz"
+		return nil
+	})
+	Notify(errors.New("Cobras!"))
+	Flush()
+
+	payload := requests[0].decodeJSON()
+	error_payload, _ := payload["error"].(map[string]interface{})
+	sent_fingerprint, _ := error_payload["fingerprint"].(string)
+
+	if !testRequestCount(t, 1) {
+		return
+	}
+
+	if sent_fingerprint != "foo bar baz" {
+		t.Errorf("Handler fingerprint should override default. expected=%v actual=%#v.", "foo bar baz", sent_fingerprint)
+		return
+	}
+}
+
+func TestNotifyWithHandlerError(t *testing.T) {
+	setup(t)
+	defer teardown()
+
+	err := fmt.Errorf("Skipping this notification")
+
+	BeforeNotify(func(n *Notice) error {
+		return err
+	})
+	_, notifyErr := Notify(errors.New("Cobras!"))
+	Flush()
+
+	if !testRequestCount(t, 0) {
+		return
+	}
+
+	if notifyErr != err {
+		t.Errorf("Notify should return error from handler. expected=%v actual=%#v.", err, notifyErr)
+		return
+	}
+}
+
 // Helper functions.
 
 func assertContext(t *testing.T, payload hash, expected Context) {
@@ -155,6 +261,31 @@ func testNoticePayload(t *testing.T, payload hash) bool {
 		}
 	}
 	return true
+}
+
+func TestHandlerCallsHandler(t *testing.T) {
+	mockHandler := &MockedHandler{}
+	mockHandler.On("ServeHTTP").Return()
+
+	handler := Handler(mockHandler)
+	req, _ := http.NewRequest("GET", "", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	mockHandler.AssertCalled(t, "ServeHTTP")
+}
+
+func TestMetricsHandlerCallsHandler(t *testing.T) {
+	mockHandler := &MockedHandler{}
+	mockHandler.On("ServeHTTP").Return()
+
+	metricsHandler := MetricsHandler(mockHandler)
+
+	req, _ := http.NewRequest("GET", "", nil)
+	w := httptest.NewRecorder()
+	metricsHandler.ServeHTTP(w, req)
+
+	mockHandler.AssertCalled(t, "ServeHTTP")
 }
 
 func assertMethod(t *testing.T, r *http.Request, method string) {

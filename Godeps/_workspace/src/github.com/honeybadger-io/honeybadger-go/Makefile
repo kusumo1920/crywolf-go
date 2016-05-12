@@ -1,9 +1,14 @@
 all: test
 
-prepare:
+deps:
 	# dependencies
-	go get code.google.com/p/go-uuid/uuid
+	go get github.com/pborman/uuid
 	go get github.com/shirou/gopsutil/load
+	# testing libs
+	go get github.com/stretchr/testify/mock
+	go get github.com/stretchr/testify/assert
+
+prepare: deps
 	# needed for `make fmt`
 	go get golang.org/x/tools/cmd/goimports
 	# linters

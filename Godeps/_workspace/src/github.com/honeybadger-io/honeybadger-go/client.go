@@ -1,8 +1,10 @@
 package honeybadger
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // The Payload interface is implemented by any type which can be handled by the
@@ -17,17 +19,21 @@ type Backend interface {
 	Notify(feature Feature, payload Payload) error
 }
 
+type noticeHandler func(*Notice) error
+
 // Client is the manager for interacting with the Honeybadger service. It holds
 // the configuration and implements the public API.
 type Client struct {
-	Config  *Configuration
-	context *Context
-	worker  worker
+	Config               *Configuration
+	context              *Context
+	worker               worker
+	beforeNotifyHandlers []noticeHandler
+	metrics              *metricCollector
 }
 
 // Configure updates the client configuration with the supplied config.
 func (client *Client) Configure(config Configuration) {
-	*client.Config = client.Config.merge(config)
+	client.Config.update(&config)
 }
 
 // SetContext updates the client context with supplied context.
@@ -40,10 +46,22 @@ func (client *Client) Flush() {
 	client.worker.Flush()
 }
 
+// BeforeNotify adds a callback function which is run before a notice is
+// reported to Honeybadger. If any function returns an error the notification
+// will be skipped, otherwise it will be sent.
+func (client *Client) BeforeNotify(handler func(notice *Notice) error) {
+	client.beforeNotifyHandlers = append(client.beforeNotifyHandlers, handler)
+}
+
 // Notify reports the error err to the Honeybadger service.
 func (client *Client) Notify(err interface{}, extra ...interface{}) (string, error) {
 	extra = append([]interface{}{*client.context}, extra...)
 	notice := newNotice(client.Config, newError(err, 2), extra...)
+	for _, handler := range client.beforeNotifyHandlers {
+		if err := handler(notice); err != nil {
+			return "", err
+		}
+	}
 	workerErr := client.worker.Push(func() error {
 		if err := client.Config.Backend.Notify(Notices, notice); err != nil {
 			return err
@@ -84,14 +102,44 @@ func (client *Client) Handler(h http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
+// MetricsHandler returns an http.Handler function which automatically reports
+// request metrics to Honeybadger.
+func (client *Client) MetricsHandler(h http.Handler) http.Handler {
+	if h == nil {
+		h = http.DefaultServeMux
+	}
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		rw := newResponseWriter(w)
+		start := time.Now()
+		defer func() {
+			client.Timing(fmt.Sprintf("app.request.%v", rw.status), time.Since(start))
+		}()
+		h.ServeHTTP(rw, r)
+	}
+	return http.HandlerFunc(fn)
+}
+
+// Increment increments a counter metric.
+func (client *Client) Increment(metric string, value int) {
+	client.metrics.increment(metric, value)
+}
+
+// Timing records a timing metric.
+func (client *Client) Timing(metric string, value time.Duration) {
+	client.metrics.timing(metric, value)
+}
+
 // New returns a new instance of Client.
 func New(c Configuration) *Client {
 	config := newConfig(c)
 	worker := newBufferedWorker(config)
+	metrics := newMetricCollector(config, worker)
+
 	client := Client{
 		Config:  config,
 		worker:  worker,
 		context: &Context{},
+		metrics: metrics,
 	}
 
 	return &client

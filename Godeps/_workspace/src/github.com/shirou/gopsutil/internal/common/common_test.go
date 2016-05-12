@@ -70,12 +70,12 @@ func TestmustParseFloat64(t *testing.T) {
 		t.Error("could not parse")
 	}
 }
-func TestStringContains(t *testing.T) {
+func TestStringsContains(t *testing.T) {
 	target, err := ReadLines("common_test.go")
 	if err != nil {
 		t.Error(err)
 	}
-	if !StringContains(target, "func TestStringContains(t *testing.T) {") {
+	if !StringsContains(target, "func TestStringsContains(t *testing.T) {") {
 		t.Error("cloud not test correctly")
 	}
 }
@@ -86,5 +86,12 @@ func TestPathExists(t *testing.T) {
 	}
 	if PathExists("should_not_exists.go") {
 		t.Error("not exists but return exists")
+	}
+}
+
+func TestHostEtc(t *testing.T) {
+	p := HostEtc("mtab")
+	if p != "/etc/mtab" {
+		t.Errorf("invalid HostEtc, %s", p)
 	}
 }

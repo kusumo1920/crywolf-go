@@ -7,12 +7,26 @@ import (
 	"regexp"
 	"time"
 
-	"code.google.com/p/go-uuid/uuid"
+	"github.com/pborman/uuid"
 	"github.com/shirou/gopsutil/load"
 	"github.com/shirou/gopsutil/mem"
 )
 
-type hash map[string]interface{}
+// ErrorClass represents the class name of the error which is sent to
+// Honeybadger.
+type ErrorClass struct {
+	Name string
+}
+
+// Fingerprint represents the fingerprint of the error, which controls grouping
+// in Honeybadger.
+type Fingerprint struct {
+	Content string
+}
+
+func (f *Fingerprint) String() string {
+	return f.Content
+}
 
 // Notice is a representation of the error which is sent to Honeybadger, and
 // implements the Payload interface.
@@ -30,6 +44,7 @@ type Notice struct {
 	Params       Params
 	CGIData      CGIData
 	URL          string
+	Fingerprint  string
 }
 
 func (n *Notice) asJSON() *hash {
@@ -41,10 +56,11 @@ func (n *Notice) asJSON() *hash {
 			"version": VERSION,
 		},
 		"error": &hash{
-			"token":     n.Token,
-			"message":   n.ErrorMessage,
-			"class":     n.ErrorClass,
-			"backtrace": n.Backtrace,
+			"token":       n.Token,
+			"message":     n.ErrorMessage,
+			"class":       n.ErrorClass,
+			"backtrace":   n.Backtrace,
+			"fingerprint": n.Fingerprint,
 		},
 		"request": &hash{
 			"context":  n.Context,
@@ -80,7 +96,7 @@ func getStats() *hash {
 		}
 	}
 
-	if stat, err := load.LoadAvg(); err == nil {
+	if stat, err := load.Avg(); err == nil {
 		l = &hash{
 			"one":     stat.Load1,
 			"five":    stat.Load5,
@@ -142,6 +158,10 @@ func newNotice(config *Configuration, err Error, extra ...interface{}) *Notice {
 		switch t := thing.(type) {
 		case Context:
 			notice.setContext(t)
+		case ErrorClass:
+			notice.ErrorClass = t.Name
+		case Fingerprint:
+			notice.Fingerprint = t.String()
 		case Params:
 			notice.Params = t
 		case CGIData:

@@ -20,7 +20,7 @@ func main() {
 		fmt.Println("Error: API key is required.")
 		return
 	}
-	honeybadger.Configure(honeybadger.Configuration{APIKey: APIKey, Root: getRoot()})
+	honeybadger.Configure(honeybadger.Configuration{APIKey: APIKey, Root: getRoot(), MetricsInterval: 10 * time.Second})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -42,7 +42,7 @@ func main() {
 
 	port := getPort()
 	fmt.Printf("Listening on port %s.\n", port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), errorHandler(honeybadger.Handler(nil))))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), honeybadger.MetricsHandler(errorHandler(honeybadger.Handler(nil)))))
 }
 
 func getPort() (port string) {
