@@ -21,7 +21,8 @@ If you'd like to do it the old fashioned way, follow these steps:
    page
 3. Clone or download this app
 4. Run `go get` to get the necessary dependencies installed
-5. Run the app: `HONEYBADGER_ENV=production HONEYBADGER_API_KEY=your_api_key_here crywolf`
+5. Run `go build` to build the app
+6. Run the app: `HONEYBADGER_ENV=production HONEYBADGER_API_KEY=your_api_key_here ./crywolf-go`
 
 ## Trying It Out
 
